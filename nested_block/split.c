@@ -5,20 +5,13 @@
 #include <string.h>
 #include <dirent.h>
 
-const size_t BUFFER_SIZE = 4096;
-const size_t INT_BUFFER_LENGTH = 1024;
+#include "consts.h"
 
 // int compare(const void * a, const void * b)
 // {
 //   return ( *(int32_t*)a - *(int32_t*)b );
 // };
 int debug = 0;
-
-void add_path(char *path, char *elem, char *filename)
-{
-	strcpy(filename, path);
-	strcat(filename, elem);
-}
 
 void split(char *filename)
 {
@@ -53,15 +46,29 @@ void split(char *filename)
     //printf("%s is created.\n", ofn);
   };
   rewind(ifp);
+
+	FILE *header;
+	char header_fname[MAX_FILE_NAME];
+	sprintf(header_fname, "%s_h.bin\0", out_file_prefix);
+	header = fopen(header_fname, "wb");
+	int32_t maxs[col_size], mins[col_size];
+	for (size_t i = 0; i < col_size; i++) {
+		maxs[i] = MIN_VALUE;
+		mins[i] = MAX_VALUE;
+	}
+
   int32_t number = 0;
   int sign = 1;
   int col_i = 0;
   int row_i = 0;
+	size_t len = 0;
   while (1) {
     int rn = fread(in_buffer, 1, BUFFER_SIZE, ifp);
     for (size_t i = 0; i < rn; i++) {
       if (in_buffer[i] == ',' || in_buffer[i] == '\n') {
         number *= sign;
+				if (number > maxs[col_i]) maxs[col_i] = number;
+				if (number < mins[col_i]) mins[col_i] = number;
         out_buffers[col_i][row_i] = number;
         //fwrite(&number, sizeof(number), 1, ofsp[col_i]);
         number = 0;
@@ -70,6 +77,7 @@ void split(char *filename)
         if (in_buffer[i] == '\n') {
           col_i = 0;
           row_i ++;
+					len ++;
           if (row_i == INT_BUFFER_LENGTH) {
             for (size_t j = 0; j < col_size; j++) {
               //qsort (out_buffers[j], row_i, sizeof(int32_t), compare);
@@ -108,7 +116,10 @@ void split(char *filename)
       break;
     }
   };
-
+	fwrite(&len, sizeof(int32_t), 1, header);
+	fwrite(maxs, sizeof(int32_t), col_size, header);
+	fwrite(mins, sizeof(int32_t), col_size, header);
+	fclose(header);
   fclose(ifp);
   free(in_buffer);
 };
@@ -133,7 +144,7 @@ void split_all(char *director)
         //printf("suffix: %s\n", suffix);
         if (strcmp(suffix, "csv") == 0) {
           char fname[25];
-          add_path(director, filename, fname);
+          sprintf(fname, "%s/%s", director, filename);
           //printf("fname: %s\n", fname);
           split(fname);
 					printf("%s split completed\n", filename);
