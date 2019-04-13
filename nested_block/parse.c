@@ -9,8 +9,8 @@
 typedef struct table {
   char name;
   size_t join_len, filter_len;
-  char **join_in;
-  char **join_out;
+  char **join_ins;
+  char **join_outs;
   char **filter_cols;
   char *filter_ops;
   int32_t *filter_numbers;
@@ -171,8 +171,8 @@ int read_sql(FILE *ifp, char *agg_cols[], size_t *agg_cols_len_p, table_t **tabl
   for (size_t i = 0; i < tables_len; i++) {
     tables[i].join_len = joins_ix[i];
     tables[i].filter_len = filters_ix[i];
-    tables[i].join_in = joins_ins[i];
-    tables[i].join_out = joins_outs[i];
+    tables[i].join_ins = joins_ins[i];
+    tables[i].join_outs = joins_outs[i];
     tables[i].filter_cols = filters_cols[i];
     tables[i].filter_ops = filters_ops[i];
     tables[i].filter_numbers = filters_numbers[i];

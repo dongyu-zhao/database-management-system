@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
         printf("Table: %c\n", tables[i].name);
         printf("join_len: %d\tfilter_len: %d\n", tables[i].join_len, tables[i].filter_len);
         for (size_t j = 0; j < tables[i].join_len; j++) {
-          printf("join_in[%d]: %s\tjoin_out[%d]: %s\n", j, tables[i].join_in[j], j, tables[i].join_out[j]);
+          printf("join_ins[%d]: %s\tjoin_outs[%d]: %s\n", j, tables[i].join_ins[j], j, tables[i].join_outs[j]);
         }
         for (size_t j = 0; j < tables[i].filter_len; j++) {
           printf("filter_cols[%d]: %s\tfilter_ops[%d]: %c\tfilter_numbers[%d]: %d\n",
@@ -197,6 +197,23 @@ int main(int argc, char *argv[])
     }
 
     */
+
+    for (size_t i = 0; i < tables_len; i++) {
+      // for (size_t j = 0; j < tables[i].join_len; j++) {
+      //   free(tables[i].join_ins[j]);
+      //   tables[i].join_ins[j] = NULL;
+      //   free(tables[i].join_outs[j]);
+      //   tables[i].join_outs[j] = NULL;
+      // }
+      free(tables[i].join_ins);
+      free(tables[i].join_outs);
+      for (size_t j = 0; j < tables[i].filter_len; j++) {
+        free(tables[i].filter_cols[j]);
+      }
+      free(tables[i].filter_cols);
+      free(tables[i].filter_ops);
+      free(tables[i].filter_numbers);
+    }
     printf("No.%d sql completed\n", ++ sql_count);
     fgetc(ifp); // skip '\n'
 
