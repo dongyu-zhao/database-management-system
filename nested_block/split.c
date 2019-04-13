@@ -6,7 +6,7 @@
 #include <dirent.h>
 
 const size_t BUFFER_SIZE = 4096;
-const size_t INT_BUFFER_LENGTH = BUFFER_SIZE / sizeof(int32_t);
+const size_t INT_BUFFER_LENGTH = 1024;
 
 // int compare(const void * a, const void * b)
 // {
@@ -122,7 +122,7 @@ void split_all(char *director)
   {
     while ((dir = readdir(d)) != NULL)
     {
-      printf("%s\n", dir->d_name);
+
       char *filename = dir->d_name;
       size_t ix = 0;
       while (filename[ix++] != '.');
@@ -130,12 +130,13 @@ void split_all(char *director)
       if (filename[ix] != '\0') {
         char suffix[4];
         strcpy(suffix, &filename[ix]);
-        printf("suffix: %s\n", suffix);
+        //printf("suffix: %s\n", suffix);
         if (strcmp(suffix, "csv") == 0) {
           char fname[25];
           add_path(director, filename, fname);
-          printf("fname: %s\n", fname);
+          //printf("fname: %s\n", fname);
           split(fname);
+					printf("%s split completed\n", filename);
         }
       }
     }

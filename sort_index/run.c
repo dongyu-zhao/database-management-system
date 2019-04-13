@@ -37,7 +37,7 @@ void add_path(char *path, char *elem, char *filename)
 	filter corresponding values of a table
 */
 int filter(size_t col_num, size_t col_num_out, char *cols[], char ops[], int32_t keys[],
-					 size_t filter_num, int32_t *output[], char *cols_out[], char *path, char *filter_cols[])
+					 size_t filter_num, char *cols_out[], char *path, char *filter_cols[])
 {
 	FILE *ifsp[col_num];
 	int32_t *buffers[col_num];
@@ -98,6 +98,7 @@ int filter(size_t col_num, size_t col_num_out, char *cols[], char ops[], int32_t
 				if (col_ix > -1) {
 					//printf("col_ix: %d\tnumber: %d\n", col_ix, buffers[j][i]);
 					output[col_ix][row_ix] = buffers[j][i];
+					// output_counts[row_ix] = 1;
 				}
 			}
 			row_ix ++;
@@ -111,11 +112,18 @@ int filter(size_t col_num, size_t col_num_out, char *cols[], char ops[], int32_t
 		free(buffers[i]);
 		if (new_size == 0) {
 			free(output[i]);
+
 			output[i] = NULL;
 		} else {
 			output[i] = (int32_t*)realloc(output[i], new_size);
 		}
 	}
+	// if (new_size == 0) {
+	// 	free(output_counts);
+	// } else {
+	// 	output_counts = (int32_t*)realloc(output_counts, new_size);
+	// }
+
 
 	return row_ix;
 	//printf("1.2\n");
