@@ -6,6 +6,16 @@
 
 #include "consts.h"
 
+typedef struct table {
+  char name;
+  size_t join_len, filter_len;
+  char **join_in;
+  char **join_out;
+  char **filter_cols;
+  char *filter_ops;
+  int32_t *filter_numbers;
+} table_t;
+
 int len(char *in[])
 {
   size_t i = 0;
@@ -13,15 +23,27 @@ int len(char *in[])
   return i - 1;
 }
 
-int read_sql(FILE *ifp, char *agg_cols[], char *join_cols[], char *filter_cols[], size_t sizes[], char ops[], int32_t consts[])
+int table_index_of(char table, table_t *tables, size_t tables_len)
+{
+  for (size_t i = 0; i < tables_len; i++) {
+    if (tables[i].name == table) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+int read_sql(FILE *ifp, char *agg_cols[], size_t *agg_cols_len_p, table_t **tables_p, size_t *tables_len_p)
 {
   char ch;
-
+  table_t *tables;
   size_t  ch_i;
+  size_t agg_cols_len = 0, tables_len = 0;
+  size_t agg_cols_ix = 0, tables_ix = 0, join_ix = 0, filter_ix = 0;
 
-  for (size_t i = 0; i < 3; i++) {
-    sizes[i] = 0;
-  }
+  agg_cols = (char**)malloc(sizeof(char*) * MAX_COLS);
+  tables = (table_t*)malloc(sizeof(table_t) * MAX_TABLES);
+
   char str[6];
   do {
     ch = fgetc(ifp);
@@ -32,22 +54,47 @@ int read_sql(FILE *ifp, char *agg_cols[], char *join_cols[], char *filter_cols[]
         char *new_str;
         new_str = (char*)malloc(6);
         strcpy(new_str, str);
-        agg_cols[sizes[0]] = new_str;
-        sizes[0]++;
+        agg_cols[agg_cols_ix ++] = new_str;
         break;
       }
       case '.': str[ch_i++] = '_'; break;
       default : if (ch_i < 6) str[ch_i++] = ch;
     };
   } while (ch != '\n');
-  agg_cols[sizes[0]] = NULL;
+  agg_cols_len = agg_cols_ix;
+  agg_cols = (char**)realloc(agg_cols, sizeof(char*) * agg_cols_len);
+  *agg_cols_len_p = agg_cols_len;
   //printf("1\n");
 
   do {
     ch = fgetc(ifp);
+    switch (ch) {
+      case '\n': break;
+      case ',': tables_ix ++; break;
+      default : tables[tables_ix].name = ch;
+    }
   } while (ch != '\n') ;
+  tables_len = tables_ix + 1;
+  tables = (table_t*)realloc(tables, sizeof(table_t) * tables_len);
+  *tables_len_p = tables_len;
+
+  char **joins_ins[tables_len], **joins_outs[tables_len];
+  char **filters_cols[tables_len];
+  char *filters_ops[tables_len];
+  int32_t *filters_numbers[tables_len];
+  size_t joins_ix[tables_len], filters_ix[tables_len];
+  for (size_t i = 0; i < tables_len; i++) {
+    joins_ins[i] = (char**)malloc(sizeof(char*) * MAX_COLS);
+    joins_outs[i] = (char**)malloc(sizeof(char*) * MAX_COLS);
+    filters_cols[i] = (char**)malloc(sizeof(char*) * MAX_COLS);
+    filters_ops[i] = (char*)malloc(MAX_COLS);
+    filters_numbers[i] = (int32_t*)malloc(sizeof(int32_t) * MAX_COLS);
+    joins_ix[i] = 0;
+    filters_ix[i] = 0;
+  }
   //printf("2\n");
 
+  char *join_cols[MAX_COLS];
   int is_start = 1;
   do {
     ch = fgetc(ifp);
@@ -62,8 +109,7 @@ int read_sql(FILE *ifp, char *agg_cols[], char *join_cols[], char *filter_cols[]
         new_str = (char*)malloc(6);
         strcpy(new_str, str);
         //printf("%s\n", new_str);
-        join_cols[sizes[1]] = new_str;
-        sizes[1]++;
+        join_cols[join_ix ++] = new_str;
         is_start = 1;
       }; break;
       case '.': str[ch_i++] = '_'; break;
@@ -71,6 +117,14 @@ int read_sql(FILE *ifp, char *agg_cols[], char *join_cols[], char *filter_cols[]
     };
   } while (ch != '\n');
   //printf("3\n");
+  for (size_t i = 0; i < join_ix; i+=2) {
+    int table_ix_1 = table_index_of(join_cols[i][0], tables, tables_len);
+    int table_ix_2 = table_index_of(join_cols[i+1][0], tables, tables_len);
+    joins_ins[table_ix_1][joins_ix[table_ix_1]] = join_cols[i];
+    joins_ins[table_ix_2][joins_ix[table_ix_2]] = join_cols[i+1];
+    joins_outs[table_ix_1][joins_ix[table_ix_1] ++] = join_cols[i+1];
+    joins_outs[table_ix_2][joins_ix[table_ix_2] ++] = join_cols[i];
+  }
 
   while (ch != ';') {
     do {ch = fgetc(ifp);} while (ch != ' ');
@@ -84,10 +138,11 @@ int read_sql(FILE *ifp, char *agg_cols[], char *join_cols[], char *filter_cols[]
     new_str = (char*)malloc(6);
     strcpy(new_str, str);
     new_str[1] = '_';
-    filter_cols[sizes[2]] = new_str;
+    int table_ix = table_index_of(new_str[0], tables, tables_len);
+    filters_cols[table_ix][filters_ix[table_ix]] = new_str;
     //printf("%s\n", new_str);
     ch = fgetc(ifp);
-    ops[sizes[2]] = ch;
+    filters_ops[table_ix][filters_ix[table_ix]] = ch;
     //printf("%c\n", ops[sizes[2]]);
     fgetc(ifp); // skip ' '
     int32_t number = 0;
@@ -102,10 +157,30 @@ int read_sql(FILE *ifp, char *agg_cols[], char *join_cols[], char *filter_cols[]
         number = number * 10 + (ch - '0');
       }
     };
-    consts[sizes[2]++] = number * sign;
+    filters_numbers[table_ix][filters_ix[table_ix] ++] = number;
   }
+
+  for (size_t i = 0; i < tables_len; i++) {
+    joins_ins[i] = (char**)realloc(joins_ins[i], sizeof(char*) * joins_ix[i]);
+    joins_outs[i] = (char**)realloc(joins_outs[i], sizeof(char*) * joins_ix[i]);
+    filters_cols[i] = (char**)realloc(filters_cols[i], sizeof(char*) * filters_ix[i]);
+    filters_ops[i] = (char*)realloc(filters_ops[i], filters_ix[i]);
+    filters_numbers[i] = (int32_t*)realloc(filters_numbers[i], sizeof(int32_t) * filters_ix[i]);
+  }
+
+  for (size_t i = 0; i < tables_len; i++) {
+    tables[i].join_len = joins_ix[i];
+    tables[i].filter_len = filters_ix[i];
+    tables[i].join_in = joins_ins[i];
+    tables[i].join_out = joins_outs[i];
+    tables[i].filter_cols = filters_cols[i];
+    tables[i].filter_ops = filters_ops[i];
+    tables[i].filter_numbers = filters_numbers[i];
+  }
+  *tables_p = tables;
   //printf("4\n");
 
+  //skip "\n\n"
   fgetc(ifp);
   fgetc(ifp);
 };

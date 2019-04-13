@@ -26,31 +26,36 @@ int indexof(char *elem, char *ls[])
 	return -1;
 }
 
-void add_path(char *path, char *elem, char *filename)
-{
-	strcpy(filename, path);
-	strcat(filename, elem);
-	strcat(filename, ".bin");
-}
+// void add_path(char *path, char *elem, char *filename)
+// {
+// 	strcpy(filename, path);
+// 	strcat(filename, elem);
+// 	strcat(filename, ".bin");
+// }
 
 /*
 	filter corresponding values of a table
 */
 int filter(size_t col_num, size_t col_num_out, char *cols[], char ops[], int32_t keys[],
-					 size_t filter_num, int32_t *output[], char *cols_out[], char *path, char *filter_cols[])
+					 size_t filter_num, char *cols_out[], char *path, char *filter_cols[])
 {
-	FILE *ifsp[col_num];
+	FILE *ifsp[col_num], *ofsp[col_num_out];
 	int32_t *buffers[col_num];
+	int32_t *output[col_num_out];
+	int filter_cols_ixs[filter_num];
 	size_t SIZE, LEN;
 
 	// Initialize input file, buffers, and read all data to the memory
+	for (size_t i = 0; i < filter_num; i++) {
+		filter_cols_ixs[i] = indexof(cols[i], filter_cols);
+	}
+
 	for (size_t i = 0; i < col_num; i ++) {
-		char *filename = (char*)malloc(MAX_FILE_NAME);
-		add_path(path, cols[i], filename);
+		char *filename[MAX_FILE_NAME];
+		fprintf(filename, "%s/%s.bin\0", path, cols[i]);
 		//printf("%s\n", filename);
 		// open file and allocate memory for buffers
 		ifsp[i] = fopen(filename, "rb");
-		free(filename);
 		if (i == 0) {
 			fseek(ifsp[0], 0L, SEEK_END);
 			SIZE = ftell(ifsp[0]);
@@ -74,7 +79,11 @@ int filter(size_t col_num, size_t col_num_out, char *cols[], char ops[], int32_t
 	}
 
 	for (size_t i = 0; i < col_num_out; i++) {
+		char *filename = (char*)malloc(MAX_FILE_NAME);
+		fprintf(filename, "%s/tmp1_c%d.bin\0", path, i);
+		ofsp[i] = fopen(filename, "wb");
 		output[i] = (int32_t*)malloc(SIZE);
+		cols_out[i] = filename;
 		//printf("The pointer of output[%d] is: %p\n", i, output[i]);
 	}
 
@@ -86,8 +95,7 @@ int filter(size_t col_num, size_t col_num_out, char *cols[], char ops[], int32_t
 		//printf("%d\n", buffers[0][i]);
 		int keep = 1;
 		for (size_t j = 0; j < filter_num; j++) {
-			int filter_cols_ix = indexof(cols[j], filter_cols);
-			if (!operate(buffers[j][i], keys[filter_cols_ix], ops[filter_cols_ix])) {
+			if (!operate(buffers[j][i], keys[filter_cols_ixs[j]], ops[filter_cols_ixs[j]])) {
 				keep = 0;
 				break;
 			}
@@ -107,25 +115,18 @@ int filter(size_t col_num, size_t col_num_out, char *cols[], char ops[], int32_t
 
 	//printf("1.1\n");
 	//printf("%d\n", row_ix);
-	size_t new_size = (row_ix + 1) * sizeof(int32_t);
 	for (size_t i = 0; i < col_num; i ++) {
 		free(buffers[i]);
 	}
 	for (size_t i = 0; i < col_num_out; i ++) {
-		if (row_ix == 0) {
-			free(output[i]);
-			output[i] = NULL;
-		} else {
-			output[i] = (int32_t*)realloc(output[i], new_size);
-		}
+		fwrite(output[i], sizeof(int32_t), len, ofsp[i]);
+		free(output[i]);
 	}
 	// if (new_size == 0) {
 	// 	free(output_counts);
 	// } else {
 	// 	output_counts = (int32_t*)realloc(output_counts, new_size);
 	// }
-
-
 	return row_ix;
 	//printf("1.2\n");
 };
@@ -133,32 +134,40 @@ int filter(size_t col_num, size_t col_num_out, char *cols[], char ops[], int32_t
 
 
 size_t join(size_t col_num_in_l, size_t col_num_in_r, size_t col_num_out, size_t in_len, size_t predicate_num,
-	          char *cols_in_l[], char *cols_in_r[], char *cols_out[], char *filter_cols[], int cols_filter[], char ops[], int32_t consts[],
-						int32_t *output[], int32_t *input[], char *path)
+	          char *cols_in_l[], char *cols_in_r[], char *cols_out[], char *filter_cols[], int cols_filter[], char ops[], int32_t consts[], char *path)
 {
 	size_t filter_len = 0;
 	while (cols_filter[filter_len] != -1) {
 		filter_len ++;
 	};
 	//printf("filter_len: %d\n", filter_len);
-	FILE *ifsp[col_num_in_r], *filter_ifsp[filter_len];
-	int32_t *buffers[col_num_in_r], *filter_buffers[filter_len];
+	FILE *ifsp_l[col_num_in_l], *ifsp_r[col_num_in_r], *filter_ifsp[filter_len]. *ofsp[col_num_out];
+	int32_t *buffers_in_l[col_num_in_l], *buffers_in_r[col_num_in_r], *filter_buffers[filter_len];
+	int32_t *output[col_num_out], *input[col_num_in_r];
 	int filter_ifs_ixs[filter_len], filter_ixs[filter_len];
 	//printf("length of the table_in: %d\n", LEN);
 	// Initialize input file, buffers, and read all data to the memory
 
 	//printf("%d, %d\n", col_num_in_r, col_num_out);
+	for (size_t i = 0; i < col_num_in_l; i++) {
+		ifsp_l[i] = fopen(col_num_in_l[i], "rb");
+	}
+
 	for (size_t i = 0; i < col_num_in_r; i ++) {
 		// open file and allocate memory for buffers
-		char filename[MAX_FILE_NAME];
-		add_path(path, cols_in_r[i], filename);
-		//printf("%s\n", filename);
-		// open file and allocate memory for buffers
+		char *filename[MAX_FILE_NAME];
+		fprintf(filename, "%s/%s.bin\0", path, cols_in_r[i]);
 		ifsp[i] = fopen(filename, "rb");
-		//printf("1\n");
-		buffers[i] = (int32_t*)malloc(BUFFER_SIZE);
-		//printf("1.0.%d.0\n", i);
-		//printf("1.0.%d.1\n", i);
+		size_t size, len;
+		if (i == 0) {
+			fseek(ifsp[0], 0L, SEEK_END);
+			size = ftell(ifsp[0]);
+			len = size / sizeof(int32_t);
+			rewind(ifsp[0]);
+		}
+		input[i] = (int32_t*)malloc(size);
+		fread(input[i], sizeof(int32_t), len, ifsp[i]);
+		fclose(ifsp[i]);
 	}
 
 	for (size_t i = 0; i < filter_len; i++) {
@@ -167,7 +176,7 @@ size_t join(size_t col_num_in_l, size_t col_num_in_r, size_t col_num_out, size_t
 		char *filter_col_name = filter_cols[filter_ix];
 		filter_ifs_ixs[i] = atoi(&filter_col_name[3]);
 		char filename[MAX_FILE_NAME];
-		add_path(path, filter_col_name, filename);
+		fprintf(filename, "%s/%s.bin\0", path, filter_col_name);
 		//printf("filter_ix: %d\tfiltename: %s\n", filter_ix, filename);
 		filter_ifsp[i] = fopen(filename, "rb");
 		filter_buffers[i] = (int32_t*)malloc(BUFFER_SIZE);
@@ -289,11 +298,11 @@ void aggregate(size_t col_num, size_t in_len, int32_t *input[], FILE *ofp)
 	long sum[col_num];
 	if (in_len == 0) {
 		for (size_t i = 0; i < col_num - 1; i ++) {
-			//fprintf(ofp, ",");
+			fprintf(ofp, ",");
 			printf(",");
 		}
-		//fprintf(ofp, "\n");
-		//fflush(ofp);
+		fprintf(ofp, "\n");
+		fflush(ofp);
 		printf("\n");
 		return;
 	}
@@ -312,16 +321,16 @@ void aggregate(size_t col_num, size_t in_len, int32_t *input[], FILE *ofp)
 	// 	printf("%d\n", sum[i]);
 	// }
 	for (size_t i = 0; i < col_num; i ++) {
-		//fprintf(ofp, "%d", sum[i]);
-		printf("%d", sum[i]);
+		fprintf(ofp, "%ld", sum[i]);
+		printf("%ld", sum[i]);
 		if (i == col_num - 1) {
-			//fprintf(ofp, "\n");
+			fprintf(ofp, "\n");
 			printf("\n");
 		} else {
 			fprintf(ofp, ",");
 			printf(",");
 		}
-		//fflush(ofp);
+		fflush(ofp);
 		free((void*)input[i]);
 		input[i]=NULL;
 		//printf("free table_in[%d] address is %p\n", i, input[i]);

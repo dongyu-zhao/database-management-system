@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "run.c"
+//#include "run.c"
 #include "parse.c"
 int debug = 0;
 
@@ -14,8 +14,7 @@ int main(int argc, char *argv[])
   double cpu_time_used;
   start = clock();
   char filename[MAX_FILE_NAME];
-  strcpy(filename, argv[1]);
-  strcat(filename, "queries.sql");
+  sprintf(filename, "%s/queries.sql\0", argv[1]);
   if (argc > 3 && strcmp(argv[3], "--debug") == 0) {
     debug = 1;
   }
@@ -26,26 +25,28 @@ int main(int argc, char *argv[])
   ofp = fopen(argv[2], "w");
   size_t sql_count = 0;
   while (!feof(ifp)) {
-    char *agg_cols[MAX_COLS], *join_cols[MAX_COLS], *filter_cols[MAX_COLS], ops[MAX_COLS];
-    size_t sizes[3];
-    int32_t consts[MAX_COLS];
-    read_sql(ifp, agg_cols, join_cols, filter_cols, sizes, ops, consts);
+    char **agg_cols;
+    table_t *tables;
+    size_t agg_cols_len, tables_len;
+    read_sql(ifp, agg_cols, &agg_cols_len, &tables, &tables_len);
 
     if (debug) {
-      for (size_t j = 0; j < sizes[0]; j++) {
-        printf("%s\t", agg_cols[j]);
+      for (size_t i = 0; i < tables_len; i++) {
+        printf("Table: %c\n", tables[i].name);
+        printf("join_len: %d\tfilter_len: %d\n", tables[i].join_len, tables[i].filter_len);
+        for (size_t j = 0; j < tables[i].join_len; j++) {
+          printf("join_in[%d]: %s\tjoin_out[%d]: %s\n", j, tables[i].join_in[j], j, tables[i].join_out[j]);
+        }
+        for (size_t j = 0; j < tables[i].filter_len; j++) {
+          printf("filter_cols[%d]: %s\tfilter_ops[%d]: %c\tfilter_numbers[%d]: %d\n",
+                j, tables[i].filter_cols[j], j, tables[i].filter_ops[j], j, tables[i].filter_numbers[j]);
+        }
+        printf("\n");
       }
       printf("\n");
-      for (size_t j = 0; j < sizes[1]; j++) {
-        printf("%s\t", join_cols[j]);
-      }
-      printf("\n");
-      for (size_t j = 0; j < sizes[2]; j++) {
-        printf("%s %c %d\t", filter_cols[j], ops[j], consts[j]);
-      }
-      printf("\n\n");
     }
 
+    /*
     char *filter_h[MAX_COLS], *join_ls_h[sizes[1] / 2][MAX_COLS];
     char *join_rs_h[sizes[1] / 2 + 1][MAX_COLS], *join_out_h[sizes[1] / 2 + 1][MAX_COLS];
     size_t predicate_num[sizes[1] / 2 + 1];
@@ -195,7 +196,7 @@ int main(int argc, char *argv[])
       printf("Aggregate Completed\n");
     }
 
-
+    */
     printf("No.%d sql completed\n", ++ sql_count);
     fgetc(ifp); // skip '\n'
 
