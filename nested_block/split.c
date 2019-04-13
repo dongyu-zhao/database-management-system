@@ -117,6 +117,7 @@ void split(char *filename)
     }
   };
 	fwrite(&len, sizeof(int32_t), 1, header);
+	fwrite(&col_size, sizeof(int32_t), 1, header);
 	fwrite(maxs, sizeof(int32_t), col_size, header);
 	fwrite(mins, sizeof(int32_t), col_size, header);
 	fclose(header);
