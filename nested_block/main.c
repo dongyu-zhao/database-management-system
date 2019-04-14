@@ -50,6 +50,24 @@ int main(int argc, char *argv[])
       }
       printf("\n");
     }
+
+    char **joins_l_h[tables_len];
+    char **joins_r_h[tables_len];
+    size_t joins_l_len[tables_len], joins_r_len[tables_len];
+    format(tables, tables_len, joins_l_h, joins_l_len, joins_r_h, joins_r_len);
+
+    for (size_t i = 0; i < tables_len; i++) {
+      printf("joins_l_h[%d] is ", i);
+      for (size_t j = 0; j < joins_l_len[i]; j++) {
+        printf("%s\t", joins_l_h[i][j]);
+      }
+      printf("\n");
+      printf("joins_r_h[%d] is ", i);
+      for (size_t j = 0; j < joins_r_len[i]; j++) {
+        printf("%s\t", joins_r_h[i][j]);
+      }
+      printf("\n\n");
+    }
     /*
     char *filter_h[MAX_COLS], *join_ls_h[sizes[1] / 2][MAX_COLS];
     char *join_rs_h[sizes[1] / 2 + 1][MAX_COLS], *join_out_h[sizes[1] / 2 + 1][MAX_COLS];
@@ -215,8 +233,8 @@ int main(int argc, char *argv[])
       free(tables[i].agg_cols);
       for (size_t j = 0; j < tables[i].join_len; j++) {
         free(tables[i].join_ins[j]);
-        tables[i].join_ins[j] = NULL;
-        tables[i].join_outs[j] = NULL;
+        // tables[i].join_ins[j] = NULL;
+        // tables[i].join_outs[j] = NULL;
       }
       free(tables[i].join_ins);
       free(tables[i].join_outs);

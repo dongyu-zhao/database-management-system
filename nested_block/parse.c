@@ -335,65 +335,53 @@ int all_null(size_t d, char *in[]) {
   return 1;
 }
 
-size_t format(char *agg_cols[], char *join_cols[], char *filter_cols[], size_t sizes[], char ops[], int32_t consts[], size_t predicate_num[],
-            char *filter_h[], char *join_ls_h[][MAX_COLS], char *join_rs_h[][MAX_COLS], char *join_out_h[][MAX_COLS], int join_filter_h[][MAX_COLS])
+void format(table_t tables[], size_t tables_len, char **joins_l_h[],  size_t joins_l_len[],
+            char **joins_r_h[], size_t joins_r_len[])
 {
-  size_t ix = 0;
-  char filter_table;
-  // fidame = (char*)malloc(max_size);
-  // strcpy(fidame, path);
-  // strcat(fidame, filter_cols[0]);
-  // filter_h[ix ++] = fidame;
-  filter_h[ix ++] = filter_cols[0];
-  filter_table = filter_cols[0][0];
-  //printf("filter_h[0]: %s\n", filter_h[0]);
-  for (size_t i = 1; i < sizes[2]; i++) {
-    if (filter_table == filter_cols[i][0]) {
-      filter_h[ix ++] = filter_cols[i];
+  for (size_t i = 0; i < tables_len; i++) {
+    table_t table_r = tables[i];
+    size_t ix_l = 0, ix_r = 0;
+    joins_l_h[i] = (char**)malloc(sizeof(char*) * MAX_COLS);
+    joins_r_h[i] = (char**)malloc(sizeof(char*) * MAX_COLS);
+    for (size_t j = 0; j < table_r.join_len; j++) {
+      int table_ix = table_index_of(table_r.join_outs[j][0], tables, i);
+      if (table_ix >= 0) {
+        joins_l_h[i][ix_l ++] = table_r.join_outs[j];
+        joins_r_h[i][ix_r ++] = table_r.join_ins[j];
+      }
     }
-  }
-  //printf("ix: %d\n", ix);
-  append_table(sizes, ix, filter_table, filter_h, agg_cols, join_cols);
 
-  size_t filter_ix = 0;
-  //printf("format.1\n");
-
-  size_t i = 0;
-  while (1) {
-    if (i == 0) {
-      predicate_num[0] = simplify(sizes, filter_h, join_ls_h[0], join_rs_h[0], join_filter_h[0], agg_cols, join_cols, filter_cols);
-      //printf("format.2\n");
-    } else {
-      predicate_num[i] = simplify(sizes, join_out_h[i - 1], join_ls_h[i], join_rs_h[i], join_filter_h[i], agg_cols, join_cols, filter_cols);
+    for (size_t j = 0; j < i; j++) {
+      table_t table_l = tables[j];
+      for (size_t k = 0; k < table_l.agg_len; k++) {
+        if (not_in(table_l.agg_cols[k], joins_l_h[i], ix_l)) {
+          joins_l_h[i][ix_l ++] = table_l.agg_cols[k];
+        }
+      }
+      for (size_t k = 0; k < table_l.join_len; k++) {
+        if (not_in(table_l.join_ins[k], joins_l_h[i], ix_l)) {
+          int table_ix = table_index_of(table_l.join_outs[k][0], tables, i);
+          if (table_ix == -1) {
+            joins_l_h[i][ix_l ++] = table_l.join_ins[k];
+          }
+        }
+      }
     }
-    join_h(join_ls_h[i], join_rs_h[i], join_out_h[i]);
 
-    // filter_ix = 0;
-    // printf("join_ls_h[%d]:\n", i);
-    // do {
-    //   printf("%s\t", join_ls_h[i][filter_ix]);
-    // } while (join_ls_h[i][++filter_ix] != NULL);
-    // printf("\n");
-    // filter_ix = 0;
-    // printf("join_rs_h[%d]:\n", i);
-    // do {
-    //   printf("%s\t", join_rs_h[i][filter_ix]);
-    // } while (join_rs_h[i][++filter_ix] != NULL);
-    // printf("\n");
-    // filter_ix = 0;
-    // printf("join_out_h[%d]:\n", i);
-    // do {
-    //   printf("%s\t", join_out_h[i][filter_ix]);
-    // } while (join_out_h[i][++filter_ix] != NULL);
-    // printf("\n");
-    i ++;
-    if (all_null(sizes[1], join_cols)) {
-      predicate_num[i] = 0;
-      // join_ls_h[i] = NULL;
-      // join_rs_h[i] = NULL;
-      // join_out_h[i] = NULL;
-      break;
+    for (size_t j = 0; j < table_r.agg_len; j++) {
+      if (not_in(table_r.agg_cols[j], joins_r_h[i], ix_r)) {
+        joins_r_h[i][ix_r ++] = table_r.agg_cols[j];
+      }
     }
+    for (size_t j = 0; j < table_r.join_len; j++) {
+      if (not_in(table_r.join_ins[j], joins_r_h[i], ix_r)) {
+        joins_r_h[i][ix_r ++] = table_r.join_ins[j];
+      }
+    }
+    joins_l_h[i] = (char**)realloc(joins_l_h[i], sizeof(char*) * ix_l);
+    joins_r_h[i] = (char**)realloc(joins_r_h[i], sizeof(char*) * ix_r);
+    joins_l_len[i] = ix_l;
+    joins_r_len[i] = ix_r;
   }
   // filter_ix = 0;
   // printf("filter_h:\n");
@@ -401,7 +389,6 @@ size_t format(char *agg_cols[], char *join_cols[], char *filter_cols[], size_t s
   //   printf("%s\t", filter_h[filter_ix]);
   // } while (filter_h[++filter_ix] != NULL);
   // printf("\n");
-  return ix;
 };
 
 // int main(int argc, char *argv[])
