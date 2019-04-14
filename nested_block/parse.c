@@ -15,7 +15,7 @@ int len(char *in[])
   return i - 1;
 }
 
-int read_sql(FILE *ifp, table_t **tables_p, size_t *tables_len_p)
+int read_sql(FILE *ifp, table_t **tables_p, size_t *tables_len_p, char ***agg_cols_p, size_t *agg_len)
 {
   char ch;
   table_t *tables;
@@ -45,6 +45,8 @@ int read_sql(FILE *ifp, table_t **tables_p, size_t *tables_len_p)
     };
   } while (ch != '\n');
   agg_cols = (char**)realloc(agg_cols, sizeof(char*) * agg_ix);
+  *agg_cols_p = agg_cols;
+  *agg_len = agg_ix;
   //printf("1\n");
 
   do {
@@ -58,9 +60,6 @@ int read_sql(FILE *ifp, table_t **tables_p, size_t *tables_len_p)
   tables_len = tables_ix + 1;
   tables = (table_t*)realloc(tables, sizeof(table_t) * tables_len);
   *tables_len_p = tables_len;
-
-
-
 
   char **aggs_cols[tables_len], **joins_ins[tables_len], **joins_outs[tables_len];
   char **filters_cols[tables_len];
@@ -150,7 +149,7 @@ int read_sql(FILE *ifp, table_t **tables_p, size_t *tables_len_p)
         number = number * 10 + (ch - '0');
       }
     };
-    filters_numbers[table_ix][filters_ix[table_ix] ++] = number;
+    filters_numbers[table_ix][filters_ix[table_ix] ++] = number * sign;
   }
 
   for (size_t i = 0; i < tables_len; i++) {
@@ -336,7 +335,7 @@ int all_null(size_t d, char *in[]) {
 }
 
 void format(table_t tables[], size_t tables_len, char **joins_l_h[],  size_t joins_l_len[],
-            char **joins_r_h[], size_t joins_r_len[])
+            char **joins_r_h[], size_t joins_r_len[], size_t joins_num[])
 {
   for (size_t i = 0; i < tables_len; i++) {
     table_t table_r = tables[i];
@@ -350,6 +349,7 @@ void format(table_t tables[], size_t tables_len, char **joins_l_h[],  size_t joi
         joins_r_h[i][ix_r ++] = table_r.join_ins[j];
       }
     }
+    joins_num[i] = ix_l;
 
     for (size_t j = 0; j < i; j++) {
       table_t table_l = tables[j];

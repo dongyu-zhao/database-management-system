@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-//#include "run.c"
+#include "run.c"
 #include "parse.c"
 #include "table.h"
 int debug = 0;
@@ -28,8 +28,9 @@ int main(int argc, char *argv[])
   size_t sql_count = 0;
   while (!feof(ifp)) {
     table_t *tables;
-    size_t tables_len;
-    read_sql(ifp, &tables, &tables_len);
+    size_t tables_len, agg_len;
+    char **agg_cols;
+    read_sql(ifp, &tables, &tables_len, &agg_cols, &agg_len);
     table_sort(tables, tables_len, path);
 
     if (debug) {
@@ -53,20 +54,54 @@ int main(int argc, char *argv[])
 
     char **joins_l_h[tables_len];
     char **joins_r_h[tables_len];
-    size_t joins_l_len[tables_len], joins_r_len[tables_len];
-    format(tables, tables_len, joins_l_h, joins_l_len, joins_r_h, joins_r_len);
+    size_t joins_l_len[tables_len], joins_r_len[tables_len], joins_num[tables_len];
+    format(tables, tables_len, joins_l_h, joins_l_len, joins_r_h, joins_r_len, joins_num);
 
+    if (debug) {
+      for (size_t i = 0; i < tables_len; i++) {
+        printf("joins_num[%d] is %d\n", i, joins_num[i]);
+        printf("joins_l_h[%d] is ", i);
+        for (size_t j = 0; j < joins_l_len[i]; j++) {
+          printf("%s\t", joins_l_h[i][j]);
+        }
+        printf("\n");
+        printf("joins_r_h[%d] is ", i);
+        for (size_t j = 0; j < joins_r_len[i]; j++) {
+          printf("%s\t", joins_r_h[i][j]);
+        }
+        printf("\n\n");
+      }
+    }
+
+    size_t rows_len;
     for (size_t i = 0; i < tables_len; i++) {
-      printf("joins_l_h[%d] is ", i);
-      for (size_t j = 0; j < joins_l_len[i]; j++) {
-        printf("%s\t", joins_l_h[i][j]);
+      table_t table = tables[i];
+      char **joins_o_h;
+      size_t joins_o_len;
+      if (i == tables_len - 1) {
+        joins_o_h = agg_cols;
+        joins_o_len = agg_len;
+      } else {
+        joins_o_h = joins_l_h[i+1];
+        joins_o_len = joins_l_len[i+1];
       }
+      rows_len = join(joins_l_h[i], joins_l_len[i], joins_r_h[i], joins_r_len[i], joins_o_h, joins_o_len,
+                          joins_num[i], i, table.filter_cols, table.filter_len, table.filter_ops, table.filter_numbers, path);
+      if (rows_len == 0) {
+        break;
+      }
+    }
+
+    if (rows_len == 0) {
+      for (size_t i = 0; i < agg_len - 1; i ++) {
+        fprintf(ofp, ",");
+        printf(",");
+      }
+      fprintf(ofp, "\n");
+      fflush(ofp);
       printf("\n");
-      printf("joins_r_h[%d] is ", i);
-      for (size_t j = 0; j < joins_r_len[i]; j++) {
-        printf("%s\t", joins_r_h[i][j]);
-      }
-      printf("\n\n");
+    } else {
+      aggregate(agg_len, tables_len, ofp, path);
     }
     /*
     char *filter_h[MAX_COLS], *join_ls_h[sizes[1] / 2][MAX_COLS];
