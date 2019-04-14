@@ -25,7 +25,7 @@ void split(char *filename)
   //setvbuf(ifp, in_buffer, _IOFBF, BUFFER_SIZE);
 
   //printf("Completed!\n");
-  int32_t col_size = 1;
+  size_t col_size = 1;
   while (1) {
     char c = fgetc(ifp);
     if (c == ',') {
@@ -59,8 +59,8 @@ void split(char *filename)
 
   int32_t number = 0;
   int sign = 1;
-  int col_i = 0;
-  int row_i = 0;
+  size_t col_i = 0;
+  size_t row_i = 0;
 	size_t len = 0;
   while (1) {
     int rn = fread(in_buffer, 1, BUFFER_SIZE, ifp);
@@ -116,8 +116,8 @@ void split(char *filename)
       break;
     }
   };
-	fwrite(&len, sizeof(int32_t), 1, header);
-	fwrite(&col_size, sizeof(int32_t), 1, header);
+	fwrite(&len, sizeof(size_t), 1, header);
+	fwrite(&col_size, sizeof(size_t), 1, header);
 	fwrite(maxs, sizeof(int32_t), col_size, header);
 	fwrite(mins, sizeof(int32_t), col_size, header);
 	fclose(header);

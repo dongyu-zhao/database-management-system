@@ -5,32 +5,14 @@
 #include <time.h>
 
 #include "consts.h"
-
-typedef struct table {
-  char name;
-  size_t join_len, filter_len;
-  char **join_ins;
-  char **join_outs;
-  char **filter_cols;
-  char *filter_ops;
-  int32_t *filter_numbers;
-} table_t;
+#include "table.h"
+#include "optimizor.c"
 
 int len(char *in[])
 {
   size_t i = 0;
   while (in[i++] != NULL);
   return i - 1;
-}
-
-int table_index_of(char table, table_t *tables, size_t tables_len)
-{
-  for (size_t i = 0; i < tables_len; i++) {
-    if (tables[i].name == table) {
-      return i;
-    }
-  }
-  return -1;
 }
 
 int read_sql(FILE *ifp, char *agg_cols[], size_t *agg_cols_len_p, table_t **tables_p, size_t *tables_len_p)

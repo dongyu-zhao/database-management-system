@@ -6,6 +6,7 @@
 
 //#include "run.c"
 #include "parse.c"
+#include "table.h"
 int debug = 0;
 
 int main(int argc, char *argv[])
@@ -14,7 +15,8 @@ int main(int argc, char *argv[])
   double cpu_time_used;
   start = clock();
   char filename[MAX_FILE_NAME];
-  sprintf(filename, "%s/queries.sql\0", argv[1]);
+  char *path = argv[1];
+  sprintf(filename, "%s/queries.sql\0", path);
   if (argc > 3 && strcmp(argv[3], "--debug") == 0) {
     debug = 1;
   }
@@ -29,6 +31,7 @@ int main(int argc, char *argv[])
     table_t *tables;
     size_t agg_cols_len, tables_len;
     read_sql(ifp, agg_cols, &agg_cols_len, &tables, &tables_len);
+    table_sort(tables, tables_len, path);
 
     if (debug) {
       for (size_t i = 0; i < tables_len; i++) {
