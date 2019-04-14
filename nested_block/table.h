@@ -3,7 +3,10 @@
 
 typedef struct table {
   char name;
-  size_t join_len, filter_len;
+  size_t agg_len;
+  size_t join_len;
+  size_t filter_len;
+  char **agg_cols;
   char **join_ins;
   char **join_outs;
   char **filter_cols;

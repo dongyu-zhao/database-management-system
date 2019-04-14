@@ -27,16 +27,18 @@ int main(int argc, char *argv[])
   ofp = fopen(argv[2], "w");
   size_t sql_count = 0;
   while (!feof(ifp)) {
-    char **agg_cols;
     table_t *tables;
-    size_t agg_cols_len, tables_len;
-    read_sql(ifp, agg_cols, &agg_cols_len, &tables, &tables_len);
+    size_t tables_len;
+    read_sql(ifp, &tables, &tables_len);
     table_sort(tables, tables_len, path);
 
     if (debug) {
       for (size_t i = 0; i < tables_len; i++) {
         printf("Table: %c\n", tables[i].name);
-        printf("join_len: %d\tfilter_len: %d\n", tables[i].join_len, tables[i].filter_len);
+        printf("agg_len: %d\tjoin_len: %d\tfilter_len: %d\n", tables[i].agg_len, tables[i].join_len, tables[i].filter_len);
+        for (size_t j = 0; j < tables[i].agg_len; j++) {
+          printf("agg_cols[%d]: %s\n", j, tables[i].agg_cols[j]);
+        }
         for (size_t j = 0; j < tables[i].join_len; j++) {
           printf("join_ins[%d]: %s\tjoin_outs[%d]: %s\n", j, tables[i].join_ins[j], j, tables[i].join_outs[j]);
         }
@@ -48,7 +50,6 @@ int main(int argc, char *argv[])
       }
       printf("\n");
     }
-
     /*
     char *filter_h[MAX_COLS], *join_ls_h[sizes[1] / 2][MAX_COLS];
     char *join_rs_h[sizes[1] / 2 + 1][MAX_COLS], *join_out_h[sizes[1] / 2 + 1][MAX_COLS];
@@ -208,6 +209,15 @@ int main(int argc, char *argv[])
       //   free(tables[i].join_outs[j]);
       //   tables[i].join_outs[j] = NULL;
       // }
+      for (size_t j = 0; j < tables[i].agg_len; j++) {
+        free(tables[i].agg_cols[j]);
+      }
+      free(tables[i].agg_cols);
+      for (size_t j = 0; j < tables[i].join_len; j++) {
+        free(tables[i].join_ins[j]);
+        tables[i].join_ins[j] = NULL;
+        tables[i].join_outs[j] = NULL;
+      }
       free(tables[i].join_ins);
       free(tables[i].join_outs);
       for (size_t j = 0; j < tables[i].filter_len; j++) {
@@ -217,6 +227,7 @@ int main(int argc, char *argv[])
       free(tables[i].filter_ops);
       free(tables[i].filter_numbers);
     }
+    free(tables);
     printf("No.%d sql completed\n", ++ sql_count);
     fgetc(ifp); // skip '\n'
 

@@ -15,13 +15,14 @@ int len(char *in[])
   return i - 1;
 }
 
-int read_sql(FILE *ifp, char *agg_cols[], size_t *agg_cols_len_p, table_t **tables_p, size_t *tables_len_p)
+int read_sql(FILE *ifp, table_t **tables_p, size_t *tables_len_p)
 {
   char ch;
   table_t *tables;
   size_t  ch_i;
-  size_t agg_cols_len = 0, tables_len = 0;
-  size_t agg_cols_ix = 0, tables_ix = 0, join_ix = 0, filter_ix = 0;
+  size_t tables_len = 0;
+  size_t agg_ix = 0, tables_ix = 0, join_ix = 0, filter_ix = 0;
+  char **agg_cols;
 
   agg_cols = (char**)malloc(sizeof(char*) * MAX_COLS);
   tables = (table_t*)malloc(sizeof(table_t) * MAX_TABLES);
@@ -36,16 +37,14 @@ int read_sql(FILE *ifp, char *agg_cols[], size_t *agg_cols_len_p, table_t **tabl
         char *new_str;
         new_str = (char*)malloc(6);
         strcpy(new_str, str);
-        agg_cols[agg_cols_ix ++] = new_str;
+        agg_cols[agg_ix ++] = new_str;
         break;
       }
       case '.': str[ch_i++] = '_'; break;
       default : if (ch_i < 6) str[ch_i++] = ch;
     };
   } while (ch != '\n');
-  agg_cols_len = agg_cols_ix;
-  agg_cols = (char**)realloc(agg_cols, sizeof(char*) * agg_cols_len);
-  *agg_cols_len_p = agg_cols_len;
+  agg_cols = (char**)realloc(agg_cols, sizeof(char*) * agg_ix);
   //printf("1\n");
 
   do {
@@ -60,21 +59,33 @@ int read_sql(FILE *ifp, char *agg_cols[], size_t *agg_cols_len_p, table_t **tabl
   tables = (table_t*)realloc(tables, sizeof(table_t) * tables_len);
   *tables_len_p = tables_len;
 
-  char **joins_ins[tables_len], **joins_outs[tables_len];
+
+
+
+  char **aggs_cols[tables_len], **joins_ins[tables_len], **joins_outs[tables_len];
   char **filters_cols[tables_len];
   char *filters_ops[tables_len];
   int32_t *filters_numbers[tables_len];
-  size_t joins_ix[tables_len], filters_ix[tables_len];
+  size_t aggs_ix[tables_len], joins_ix[tables_len], filters_ix[tables_len];
   for (size_t i = 0; i < tables_len; i++) {
+    aggs_cols[i] = (char**)malloc(sizeof(char*) * MAX_COLS);
     joins_ins[i] = (char**)malloc(sizeof(char*) * MAX_COLS);
     joins_outs[i] = (char**)malloc(sizeof(char*) * MAX_COLS);
     filters_cols[i] = (char**)malloc(sizeof(char*) * MAX_COLS);
     filters_ops[i] = (char*)malloc(MAX_COLS);
     filters_numbers[i] = (int32_t*)malloc(sizeof(int32_t) * MAX_COLS);
+    aggs_ix[i] = 0;
     joins_ix[i] = 0;
     filters_ix[i] = 0;
   }
   //printf("2\n");
+
+  for (size_t i = 0; i < agg_ix; i++) {
+    //printf("agg_cols[%d] is %s\n", i, agg_cols[i]);
+    int table_ix = table_index_of(agg_cols[i][0], tables, tables_len);
+    aggs_cols[table_ix][aggs_ix[table_ix] ++] = agg_cols[i];
+    //printf("aggs_ix[%d] is %d\n", table_ix, aggs_ix[table_ix]);
+  }
 
   char *join_cols[MAX_COLS];
   int is_start = 1;
@@ -143,6 +154,7 @@ int read_sql(FILE *ifp, char *agg_cols[], size_t *agg_cols_len_p, table_t **tabl
   }
 
   for (size_t i = 0; i < tables_len; i++) {
+    aggs_cols[i] = (char**)realloc(aggs_cols[i], sizeof(char*) * aggs_ix[i]);
     joins_ins[i] = (char**)realloc(joins_ins[i], sizeof(char*) * joins_ix[i]);
     joins_outs[i] = (char**)realloc(joins_outs[i], sizeof(char*) * joins_ix[i]);
     filters_cols[i] = (char**)realloc(filters_cols[i], sizeof(char*) * filters_ix[i]);
@@ -151,8 +163,10 @@ int read_sql(FILE *ifp, char *agg_cols[], size_t *agg_cols_len_p, table_t **tabl
   }
 
   for (size_t i = 0; i < tables_len; i++) {
+    tables[i].agg_len = aggs_ix[i];
     tables[i].join_len = joins_ix[i];
     tables[i].filter_len = filters_ix[i];
+    tables[i].agg_cols = aggs_cols[i];
     tables[i].join_ins = joins_ins[i];
     tables[i].join_outs = joins_outs[i];
     tables[i].filter_cols = filters_cols[i];
