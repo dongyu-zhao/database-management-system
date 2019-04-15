@@ -6,6 +6,7 @@
 
 #include "run.c"
 #include "parse.c"
+#include "table.h"
 int debug = 0;
 
 int main(int argc, char *argv[])
@@ -14,38 +15,97 @@ int main(int argc, char *argv[])
   double cpu_time_used;
   start = clock();
   char filename[MAX_FILE_NAME];
-  strcpy(filename, argv[1]);
-  strcat(filename, "queries.sql");
-  if (argc > 3 && strcmp(argv[3], "--debug") == 0) {
-    debug = 1;
-  }
+  char *path = argv[1];
+  sprintf(filename, "%s/queries.sql\0", path);
+  // if (argc > 3 && strcmp(argv[3], "--debug") == 0) {
+  //   debug = 1;
+  // }
 
   //printf("%s\n", filename);
-  FILE *ifp, *ofp;
+  FILE *ifp;
   ifp = fopen(filename, "r");
-  ofp = fopen(argv[2], "w");
+  //ofp = fopen(argv[2], "w");
   size_t sql_count = 0;
   while (!feof(ifp)) {
-    char *agg_cols[MAX_COLS], *join_cols[MAX_COLS], *filter_cols[MAX_COLS], ops[MAX_COLS];
-    size_t sizes[3];
-    int32_t consts[MAX_COLS];
-    read_sql(ifp, agg_cols, join_cols, filter_cols, sizes, ops, consts);
+    table_t *tables;
+    size_t tables_len, agg_len;
+    char **agg_cols;
+    read_sql(ifp, &tables, &tables_len, &agg_cols, &agg_len);
+    table_sort(tables, tables_len, path);
 
     if (debug) {
-      for (size_t j = 0; j < sizes[0]; j++) {
-        printf("%s\t", agg_cols[j]);
+      for (size_t i = 0; i < tables_len; i++) {
+        printf("Table: %c\n", tables[i].name);
+        printf("agg_len: %d\tjoin_len: %d\tfilter_len: %d\n", tables[i].agg_len, tables[i].join_len, tables[i].filter_len);
+        for (size_t j = 0; j < tables[i].agg_len; j++) {
+          printf("agg_cols[%d]: %s\n", j, tables[i].agg_cols[j]);
+        }
+        for (size_t j = 0; j < tables[i].join_len; j++) {
+          printf("join_ins[%d]: %s\tjoin_outs[%d]: %s\n", j, tables[i].join_ins[j], j, tables[i].join_outs[j]);
+        }
+        for (size_t j = 0; j < tables[i].filter_len; j++) {
+          printf("filter_cols[%d]: %s\tfilter_ops[%d]: %c\tfilter_numbers[%d]: %d\n",
+                j, tables[i].filter_cols[j], j, tables[i].filter_ops[j], j, tables[i].filter_numbers[j]);
+        }
+        printf("\n");
       }
       printf("\n");
-      for (size_t j = 0; j < sizes[1]; j++) {
-        printf("%s\t", join_cols[j]);
-      }
-      printf("\n");
-      for (size_t j = 0; j < sizes[2]; j++) {
-        printf("%s %c %d\t", filter_cols[j], ops[j], consts[j]);
-      }
-      printf("\n\n");
     }
 
+    char **joins_l_h[tables_len];
+    char **joins_r_h[tables_len];
+    size_t joins_l_len[tables_len], joins_r_len[tables_len], joins_num[tables_len];
+    format(tables, tables_len, joins_l_h, joins_l_len, joins_r_h, joins_r_len, joins_num);
+
+    if (debug) {
+      for (size_t i = 0; i < tables_len; i++) {
+        printf("joins_num[%d] is %d\n", i, joins_num[i]);
+        printf("joins_l_h[%d] is ", i);
+        for (size_t j = 0; j < joins_l_len[i]; j++) {
+          printf("%s\t", joins_l_h[i][j]);
+        }
+        printf("\n");
+        printf("joins_r_h[%d] is ", i);
+        for (size_t j = 0; j < joins_r_len[i]; j++) {
+          printf("%s\t", joins_r_h[i][j]);
+        }
+        printf("\n\n");
+      }
+    }
+
+    size_t rows_len;
+    for (size_t i = 0; i < tables_len; i++) {
+      table_t table = tables[i];
+      char **joins_o_h;
+      size_t joins_o_len;
+      if (i == tables_len - 1) {
+        joins_o_h = agg_cols;
+        joins_o_len = agg_len;
+      } else {
+        joins_o_h = joins_l_h[i+1];
+        joins_o_len = joins_l_len[i+1];
+      }
+      rows_len = join(joins_l_h[i], joins_l_len[i], joins_r_h[i], joins_r_len[i], joins_o_h, joins_o_len,
+                          joins_num[i], i, table.filter_cols, table.filter_len, table.filter_ops, table.filter_numbers, path);
+      //printf("rows len is %d\n", rows_len);
+      if (rows_len == 0) {
+        break;
+      }
+    }
+
+    if (rows_len == 0) {
+      for (size_t i = 0; i < agg_len - 1; i ++) {
+        //fprintf(ofp, ",");
+        printf(",");
+      }
+      //fprintf(ofp, "\n");
+      //fflush(ofp);
+      printf("\n");
+    } else {
+      aggregate(agg_len, tables_len, path);
+    }
+
+    /*
     char *filter_h[MAX_COLS], *join_ls_h[sizes[1] / 2][MAX_COLS];
     char *join_rs_h[sizes[1] / 2 + 1][MAX_COLS], *join_out_h[sizes[1] / 2 + 1][MAX_COLS];
     size_t predicate_num[sizes[1] / 2 + 1];
@@ -109,6 +169,7 @@ int main(int argc, char *argv[])
       }
       printf("\n\n");
     }
+
 
     int32_t **table_in, **table_out;
     size_t col_num_in_l = len(filter_h), col_num_in_r, col_num_out = len(join_ls_h[0]);
@@ -193,12 +254,41 @@ int main(int argc, char *argv[])
     if (debug == 1) {
       printf("Aggregate Completed\n");
     }
-    //printf("No.%d sql completed\n", ++ sql_count);
+
+    */
+
+    for (size_t i = 0; i < tables_len; i++) {
+      // for (size_t j = 0; j < tables[i].join_len; j++) {
+      //   free(tables[i].join_ins[j]);
+      //   tables[i].join_ins[j] = NULL;
+      //   free(tables[i].join_outs[j]);
+      //   tables[i].join_outs[j] = NULL;
+      // }
+      for (size_t j = 0; j < tables[i].agg_len; j++) {
+        free(tables[i].agg_cols[j]);
+      }
+      free(tables[i].agg_cols);
+      for (size_t j = 0; j < tables[i].join_len; j++) {
+        free(tables[i].join_ins[j]);
+        // tables[i].join_ins[j] = NULL;
+        // tables[i].join_outs[j] = NULL;
+      }
+      free(tables[i].join_ins);
+      free(tables[i].join_outs);
+      for (size_t j = 0; j < tables[i].filter_len; j++) {
+        free(tables[i].filter_cols[j]);
+      }
+      free(tables[i].filter_cols);
+      free(tables[i].filter_ops);
+      free(tables[i].filter_numbers);
+    }
+    free(tables);
+    printf("No.%d sql completed\n", ++ sql_count);
     fgetc(ifp); // skip '\n'
 
   }
   fclose(ifp);
-  fclose(ofp);
+  //fclose(ofp);
 
   end = clock();
   cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
