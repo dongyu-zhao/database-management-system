@@ -74,7 +74,7 @@ size_t join(char *cols_in_l[], size_t col_num_in_l,
 						char *cols_in_r[], size_t col_num_in_r,
 						char *cols_out[], size_t col_num_out,
 						size_t join_num,  size_t join_ix,
-						char *filter_cols[], size_t filter_len, char ops[], int32_t consts[], char *path)
+						char *filter_cols[], size_t filter_len, char ops[], int32_t consts[])
 {
 	//printf("filter_len: %d\n", filter_len);
 	FILE *ifsp_l[col_num_in_l], *ofsp[col_num_out];
@@ -88,7 +88,7 @@ size_t join(char *cols_in_l[], size_t col_num_in_l,
 	for (size_t i = 0; i < col_num_in_r; i ++) {
 		// open file and allocate memory for buffers
 		char filename[MAX_FILE_NAME];
-		sprintf(filename, "%s/%s.bin\0", path, cols_in_r[i]);
+		sprintf(filename, "%s.bin\0", cols_in_r[i]);
 		FILE *fp = fopen(filename, "rb");
 
 		if (i == 0) {
@@ -106,7 +106,7 @@ size_t join(char *cols_in_l[], size_t col_num_in_l,
 
 	for (size_t i = 0; i < filter_len; i++) {
 		char filename[MAX_FILE_NAME];
-		sprintf(filename, "%s/%s.bin\0", path, filter_cols[i]);
+		sprintf(filename, "%s.bin\0", filter_cols[i]);
 		FILE *fp = fopen(filename, "rb");
 		filter_buffers[i] = (int32_t*)malloc(size);
 		fread(filter_buffers[i], sizeof(int32_t), len, fp);
@@ -144,7 +144,7 @@ size_t join(char *cols_in_l[], size_t col_num_in_l,
 
 	for (size_t i = 0; i < col_num_out; i++) {
 		char filename[MAX_FILE_NAME];
-		sprintf(filename, "%s/tmp%d_c%d.bin\0", path, join_ix + 1, i);
+		sprintf(filename, "tmp%d_c%d.bin\0", join_ix + 1, i);
 		ofsp[i] = fopen(filename, "wb");
 	}
 
@@ -171,7 +171,7 @@ size_t join(char *cols_in_l[], size_t col_num_in_l,
 
 	for (size_t i = 0; i < col_num_in_l; i++) {
 		char filename[MAX_FILE_NAME];
-		sprintf(filename, "%s/tmp%d_c%d.bin\0", path, join_ix, i);
+		sprintf(filename, "tmp%d_c%d.bin\0", join_ix, i);
 		buffers_in_l[i] = (int32_t*)malloc(BUFFER_SIZE);
 		ifsp_l[i] = fopen(filename, "rb");
 	}
@@ -263,7 +263,7 @@ size_t join(char *cols_in_l[], size_t col_num_in_l,
 	return row_len;
 };
 
-void aggregate(size_t col_num, size_t join_ix, char *path)
+void aggregate(size_t col_num, size_t join_ix)
 {
 	//printf("len is %d\n", LEN);
 	int64_t sum[col_num];
@@ -276,7 +276,7 @@ void aggregate(size_t col_num, size_t join_ix, char *path)
 	for (size_t i = 0; i < col_num; i ++) {
 		// open file and allocate memory for buffers
 		char filename[MAX_FILE_NAME];
-		sprintf(filename, "%s/tmp%d_c%d.bin\0", path, join_ix, i);
+		sprintf(filename, "tmp%d_c%d.bin\0", join_ix, i);
 		fps[i] = fopen(filename, "rb");
 		buffers[i] = (int32_t*)malloc(BUFFER_SIZE);
 	}

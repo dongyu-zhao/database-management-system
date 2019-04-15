@@ -3,5 +3,4 @@
 # python3 main.py
 # ./a.out
 
-./split.out
-./split.out
+./main.out

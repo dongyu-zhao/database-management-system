@@ -17,9 +17,12 @@ void split(char *filename)
 {
   FILE *ifp;
   char *in_buffer;
-  char out_file_prefix[strlen(filename)];
-  strcpy(out_file_prefix, filename);
-  out_file_prefix[strlen(filename) - 4] = '\0';
+  char path[80];
+  char table = filename[strlen(filename) - 5];
+  getcwd(path, sizeof(path));
+  // char out_file_prefix[strlen(filename)];
+  // strcpy(out_file_prefix, filename);
+  // out_file_prefix[strlen(filename) - 4] = '\0';
   ifp = fopen(filename, "r");
   in_buffer = (char*)malloc(BUFFER_SIZE);
   //setvbuf(ifp, in_buffer, _IOFBF, BUFFER_SIZE);
@@ -38,8 +41,8 @@ void split(char *filename)
   FILE *ofsp[col_size];
   int32_t *out_buffers[col_size];
   for (size_t i = 0; i < col_size; i++) {
-    char ofn[100];
-    sprintf(ofn, "%s_c%d.bin\0", out_file_prefix, i);
+    char ofn[MAX_FILE_NAME];
+    sprintf(ofn, "%c_c%d.bin\0", table, i);
     ofsp[i] = fopen(ofn, "wb+");
     out_buffers[i] = (int32_t*)malloc(BUFFER_SIZE);
     //setvbuf(ofsp[i], out_buffers[i], _IOFBF, BUFFER_SIZE);
@@ -49,7 +52,7 @@ void split(char *filename)
 
 	FILE *header;
 	char header_fname[MAX_FILE_NAME];
-	sprintf(header_fname, "%s_h.bin\0", out_file_prefix);
+	sprintf(header_fname, "%c_h.bin\0", table);
 	header = fopen(header_fname, "wb");
 	int32_t maxs[col_size], mins[col_size];
 	for (size_t i = 0; i < col_size; i++) {
@@ -125,6 +128,21 @@ void split(char *filename)
   free(in_buffer);
 };
 
+void split_require(char *files) {
+  size_t file_ix = 0, start = 0;
+  while (files[file_ix] != '\0') {
+    while(files[file_ix] != ',' && files[file_ix] != '\0' && files[file_ix] != '\n') {
+      file_ix ++;
+    }
+    char filename[MAX_FILE_NAME];
+    strncpy(filename, &files[start], file_ix - start);
+    printf("filename: %s\n", filename);
+    split(filename);
+    file_ix ++;
+    start = file_ix;
+  }
+}
+
 void split_all(char *director)
 {
   DIR *d;
@@ -156,19 +174,19 @@ void split_all(char *director)
   }
 }
 
-int main(int argc, char *argv[])
-{
-
-  // if (argc >= 2 && strcmp(argv[2], "--debug") == 0) {
-  //   debug = 1;
-  // }
-  clock_t start, end;
-  double cpu_time_used;
-  start = clock();
-  split_all(argv[1]);
-  end = clock();
-  cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-  printf("Time consume: %.1fs\n", cpu_time_used);
-
-  return 0;
-}
+// int main(int argc, char *argv[])
+// {
+//
+//   // if (argc >= 2 && strcmp(argv[2], "--debug") == 0) {
+//   //   debug = 1;
+//   // }
+//   clock_t start, end;
+//   double cpu_time_used;
+//   start = clock();
+//   split_all(argv[1]);
+//   end = clock();
+//   cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+//   printf("Time consume: %.1fs\n", cpu_time_used);
+//
+//   return 0;
+// }

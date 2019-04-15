@@ -81,11 +81,11 @@ size_t size_max(size_t x, size_t y) {
   if (x < y) return y;
 }
 
-int cost(table_t table_ls[], size_t table_ls_len, table_t table_r, char *path, size_t size_l_log)
+int cost(table_t table_ls[], size_t table_ls_len, table_t table_r, size_t size_l_log)
 {
 
   char fname_r[MAX_FILE_NAME];
-  sprintf(fname_r, "%s/%c_h.bin", path, table_r.name);
+  sprintf(fname_r, "%c_h.bin", table_r.name);
   FILE *fp_r = fopen(fname_r, "rb");
   size_t rows_len_r, cols_len_r;
   fread(&rows_len_r, sizeof(size_t), 1, fp_r);
@@ -134,7 +134,7 @@ int cost(table_t table_ls[], size_t table_ls_len, table_t table_r, char *path, s
     int ix = table_index_of(table_r.join_outs[i][0], table_ls, table_ls_len);
     if (ix >= 0) {
       char fname_l[MAX_FILE_NAME];
-      sprintf(fname_l, "%s/%c_h.bin", path, table_ls[ix].name);
+      sprintf(fname_l, "%c_h.bin", table_ls[ix].name);
       FILE *fp_l = fopen(fname_l, "rb");
       size_t rows_len_l, cols_len_l;
       fread(&rows_len_l, sizeof(size_t), 1, fp_l);
@@ -167,7 +167,7 @@ size_t size_two_pow(size_t x) {
   return y;
 }
 
-size_t compute_best(size_t ix, size_t best[], table_t tables[], size_t tables_len, char *path, size_t *tables_ix) {
+size_t compute_best(size_t ix, size_t best[], table_t tables[], size_t tables_len, size_t *tables_ix) {
   if (tables_len == 0) {
     return 0;
   }
@@ -190,8 +190,8 @@ size_t compute_best(size_t ix, size_t best[], table_t tables[], size_t tables_le
     for (size_t j = i + 1; j < tables_len; j ++) {
       sub_tables[j - 1] = tables_copy[j];
     }
-    size_t size_l_log = compute_best(ix - tables_ix[tables_copy[i].name - 'A'], best, sub_tables, tables_len - 1, path, tables_ix);
-    size_t size_log = size_l_log + cost(sub_tables, tables_len - 1, tables_copy[i], path, size_l_log);
+    size_t size_l_log = compute_best(ix - tables_ix[tables_copy[i].name - 'A'], best, sub_tables, tables_len - 1, tables_ix);
+    size_t size_log = size_l_log + cost(sub_tables, tables_len - 1, tables_copy[i], size_l_log);
     if (size_log < size_curr_log) {
       size_curr_log = size_log;
       for (size_t j = 0; j < tables_len - 1; j++) {
@@ -203,7 +203,7 @@ size_t compute_best(size_t ix, size_t best[], table_t tables[], size_t tables_le
   best[ix] = size_curr_log;
 }
 
-void table_sort(table_t tables[], size_t tables_len, char *path) {
+void table_sort(table_t tables[], size_t tables_len) {
   size_t len = size_two_pow(tables_len);
   size_t best[len];
   for (size_t i = 0; i < len; i++) {
@@ -215,13 +215,13 @@ void table_sort(table_t tables[], size_t tables_len, char *path) {
     tables_ix[tables[i].name - 'A'] = ix;
     ix *= 2;
   }
-  compute_best(len - 1, best, tables, tables_len, path, tables_ix);
+  compute_best(len - 1, best, tables, tables_len, tables_ix);
   // for (size_t i = 1; i < len; i++) {
   //   printf("best[%d] is :%d\n", i, best[i]);
   // }
 }
 
-void table_sort2(table_t tables[], size_t tables_len, char *path) {
+void table_sort2(table_t tables[], size_t tables_len) {
   table_t tables_copy[tables_len];
   for (size_t i = 0; i < tables_len; i++) {
     tables_copy[i] = tables[i];

@@ -15,7 +15,7 @@ int len(char *in[])
   return i - 1;
 }
 
-int read_sql(FILE *ifp, table_t **tables_p, size_t *tables_len_p, char ***agg_cols_p, size_t *agg_len)
+int read_sql(table_t **tables_p, size_t *tables_len_p, char ***agg_cols_p, size_t *agg_len)
 {
   char ch;
   table_t *tables;
@@ -29,7 +29,7 @@ int read_sql(FILE *ifp, table_t **tables_p, size_t *tables_len_p, char ***agg_co
 
   char str[6];
   do {
-    ch = fgetc(ifp);
+    ch = getchar();
     switch (ch) {
       case '(': ch_i = 0; break;
       case ')': {
@@ -50,7 +50,7 @@ int read_sql(FILE *ifp, table_t **tables_p, size_t *tables_len_p, char ***agg_co
   //printf("1\n");
 
   do {
-    ch = fgetc(ifp);
+    ch = getchar();
     switch (ch) {
       case '\n': break;
       case ',': tables_ix ++; break;
@@ -89,7 +89,7 @@ int read_sql(FILE *ifp, table_t **tables_p, size_t *tables_len_p, char ***agg_co
   char *join_cols[MAX_COLS];
   int is_start = 1;
   do {
-    ch = fgetc(ifp);
+    ch = getchar();
     switch (ch) {
       case '\n':
       case ' ': if (is_start) {
@@ -119,10 +119,10 @@ int read_sql(FILE *ifp, table_t **tables_p, size_t *tables_len_p, char ***agg_co
   }
 
   while (ch != ';') {
-    do {ch = fgetc(ifp);} while (ch != ' ');
+    do {ch = getchar();} while (ch != ' ');
     ch_i = 0;
     do {
-      ch = fgetc(ifp);
+      ch = getchar();
       str[ch_i ++] = ch;
     } while (ch != ' ');
     str[--ch_i] = '\0';
@@ -133,14 +133,14 @@ int read_sql(FILE *ifp, table_t **tables_p, size_t *tables_len_p, char ***agg_co
     int table_ix = table_index_of(new_str[0], tables, tables_len);
     filters_cols[table_ix][filters_ix[table_ix]] = new_str;
     //printf("%s\n", new_str);
-    ch = fgetc(ifp);
+    ch = getchar();
     filters_ops[table_ix][filters_ix[table_ix]] = ch;
     //printf("%c\n", ops[sizes[2]]);
-    fgetc(ifp); // skip ' '
+    getchar(); // skip ' '
     int32_t number = 0;
     int sign = 1;
     while (1) {
-      ch = fgetc(ifp);
+      ch = getchar();
       if (ch == ' ' || ch == ';') {
         break;
       } else if (ch == '-') {
@@ -176,8 +176,8 @@ int read_sql(FILE *ifp, table_t **tables_p, size_t *tables_len_p, char ***agg_co
   //printf("4\n");
 
   //skip "\n\n"
-  fgetc(ifp);
-  fgetc(ifp);
+  getchar();
+  getchar();
 };
 
 

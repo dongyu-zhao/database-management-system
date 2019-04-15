@@ -4,34 +4,62 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "split.c"
 #include "run.c"
 #include "parse.c"
 #include "table.h"
-int debug = 0;
 
-int main(int argc, char *argv[])
+int main()
 {
-  clock_t start, end;
-  double cpu_time_used;
-  start = clock();
-  char filename[MAX_FILE_NAME];
-  char *path = argv[1];
-  sprintf(filename, "%s/queries.sql\0", path);
+  //clock_t start, end;
+  //double cpu_time_used;
+  //start = clock();
+  char ch = getchar();
+  while (ch != '\n') {
+    size_t file_ix = 0;
+    char filename[MAX_FILE_NAME];
+    if (ch == ',') {
+      ch = getchar();
+    }
+    while(ch != ',' && ch != '\n') {
+      filename[file_ix ++] = ch;
+      ch = getchar();
+    }
+    //printf("filename: %s\n", filename);
+    split(filename);
+  }
+  //getchar();
+  size_t sql_count = 0;
+  ch = getchar();
+  while (ch != '\n') {
+    sql_count = sql_count * 10 + ch - '0';
+    ch = getchar();
+  }
+  //printf("sql_count: %d\n", sql_count);
+
+
+
+  // char filename[MAX_FILE_NAME];
+  // char *path = argv[1];
+  // sprintf(filename, "%s/queries.sql\0", path);
+
   // if (argc > 3 && strcmp(argv[3], "--debug") == 0) {
   //   debug = 1;
   // }
 
   //printf("%s\n", filename);
-  FILE *ifp;
-  ifp = fopen(filename, "r");
+  // FILE *ifp;
+  // ifp = fopen(filename, "r");
   //ofp = fopen(argv[2], "w");
-  size_t sql_count = 0;
-  while (!feof(ifp)) {
+  // size_t sql_count = 0;
+
+
+  for (size_t i = 0; i < sql_count; i ++) {
     table_t *tables;
     size_t tables_len, agg_len;
     char **agg_cols;
-    read_sql(ifp, &tables, &tables_len, &agg_cols, &agg_len);
-    table_sort(tables, tables_len, path);
+    read_sql(&tables, &tables_len, &agg_cols, &agg_len);
+    table_sort(tables, tables_len);
 
     if (debug) {
       for (size_t i = 0; i < tables_len; i++) {
@@ -86,7 +114,7 @@ int main(int argc, char *argv[])
         joins_o_len = joins_l_len[i+1];
       }
       rows_len = join(joins_l_h[i], joins_l_len[i], joins_r_h[i], joins_r_len[i], joins_o_h, joins_o_len,
-                          joins_num[i], i, table.filter_cols, table.filter_len, table.filter_ops, table.filter_numbers, path);
+                          joins_num[i], i, table.filter_cols, table.filter_len, table.filter_ops, table.filter_numbers);
       //printf("rows len is %d\n", rows_len);
       if (rows_len == 0) {
         break;
@@ -102,7 +130,7 @@ int main(int argc, char *argv[])
       //fflush(ofp);
       printf("\n");
     } else {
-      aggregate(agg_len, tables_len, path);
+      aggregate(agg_len, tables_len);
     }
 
     /*
@@ -283,15 +311,15 @@ int main(int argc, char *argv[])
       free(tables[i].filter_numbers);
     }
     free(tables);
-    printf("No.%d sql completed\n", ++ sql_count);
-    fgetc(ifp); // skip '\n'
-
+    //printf("No.%d sql completed\n", i);
+    fflush(stdout);
+    getchar(); // skip '\n'
   }
-  fclose(ifp);
+  //fclose(ifp);
   //fclose(ofp);
 
-  end = clock();
-  cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-  printf("%.1f\n", cpu_time_used);
+  //end = clock();
+  //cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+  //printf("%.1f\n", cpu_time_used);
   return 0;
 };
