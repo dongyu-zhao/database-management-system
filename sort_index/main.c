@@ -14,28 +14,31 @@ int main()
   //clock_t start, end;
   //double cpu_time_used;
   //start = clock();
-  char ch = getchar();
+  char ch = getc(stdin);
   while (ch != '\n') {
     size_t file_ix = 0;
     char filename[MAX_FILE_NAME];
     if (ch == ',') {
-      ch = getchar();
+      ch = getc(stdin);
     }
     while(ch != ',' && ch != '\n') {
       filename[file_ix ++] = ch;
-      ch = getchar();
+      ch = getc(stdin);
     }
+    filename[file_ix] = '\0';
     //printf("filename: %s\n", filename);
+    //fflush(stdout);
     split(filename);
   }
-  //getchar();
+  //getc(stdin);
   size_t sql_count = 0;
-  ch = getchar();
+  ch = getc(stdin);
   while (ch != '\n') {
     sql_count = sql_count * 10 + ch - '0';
-    ch = getchar();
+    ch = getc(stdin);
   }
   //printf("sql_count: %d\n", sql_count);
+  //fflush(stdout);
 
 
 
@@ -53,14 +56,13 @@ int main()
   //ofp = fopen(argv[2], "w");
   // size_t sql_count = 0;
 
-
-  for (size_t i = 0; i < sql_count; i ++) {
+  debug = 0;
+  for (size_t sql_ix = 0; sql_ix < sql_count; sql_ix ++) {
     table_t *tables;
     size_t tables_len, agg_len;
     char **agg_cols;
     read_sql(&tables, &tables_len, &agg_cols, &agg_len);
     table_sort(tables, tables_len);
-
     if (debug) {
       for (size_t i = 0; i < tables_len; i++) {
         printf("Table: %c\n", tables[i].name);
@@ -85,6 +87,7 @@ int main()
     size_t joins_l_len[tables_len], joins_r_len[tables_len], joins_num[tables_len];
     format(tables, tables_len, joins_l_h, joins_l_len, joins_r_h, joins_r_len, joins_num);
 
+    //debug = 1;
     if (debug) {
       for (size_t i = 0; i < tables_len; i++) {
         printf("joins_num[%d] is %d\n", i, joins_num[i]);
@@ -312,8 +315,13 @@ int main()
     }
     free(tables);
     //printf("No.%d sql completed\n", i);
-    fflush(stdout);
-    getchar(); // skip '\n'
+    //fflush(stdout);
+    if (sql_ix + 1 == sql_count) {
+      fflush(stdout);
+      return 0;
+    }
+    getc(stdin); // skip '\n'
+    getc(stdin);
   }
   //fclose(ifp);
   //fclose(ofp);
@@ -321,5 +329,6 @@ int main()
   //end = clock();
   //cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
   //printf("%.1f\n", cpu_time_used);
+  fflush(stdout);
   return 0;
 };

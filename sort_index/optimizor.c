@@ -103,13 +103,14 @@ int cost(table_t table_ls[], size_t table_ls_len, table_t table_r, size_t size_l
     if (table_r.filter_ops[i] == '=') {
       diff = unique_estimate(maxs_r[ix_filter], mins_r[ix_filter]);
     } else if (table_r.filter_ops[i] == '>'){
+      if (maxs_r[ix_filter] == table_r.filter_numbers[i]) return 1;
       diff = log2_estimate((maxs_r[ix_filter] - mins_r[ix_filter]) / (maxs_r[ix_filter] - table_r.filter_numbers[i]));
     } else {
+      if (mins_r[ix_filter] == table_r.filter_numbers[i]) return 1;
       diff = log2_estimate((maxs_r[ix_filter] - mins_r[ix_filter]) / (table_r.filter_numbers[i] - mins_r[ix_filter]));
     }
     if (size_log <= diff) {
-      size_log = 1;
-      break;
+      return 1;
     }
     size_log -= diff;
   }

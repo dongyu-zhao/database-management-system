@@ -19,7 +19,6 @@ void split(char *filename)
   char *in_buffer;
   char path[80];
   char table = filename[strlen(filename) - 5];
-  getcwd(path, sizeof(path));
   // char out_file_prefix[strlen(filename)];
   // strcpy(out_file_prefix, filename);
   // out_file_prefix[strlen(filename) - 4] = '\0';
